@@ -1,0 +1,1223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Warrick Education Center - Bell System</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        wec: {
+                            navy: '#002B5B',
+                            primary: '#004085',
+                            light: '#0056b3',
+                            accent: '#28a745',
+                            gold: '#FFC107'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap');
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: #f1f5f9;
+        }
+
+        .font-mono-clock {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Pulse ringing visual effect */
+        @keyframes ringPulse {
+            0% { box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.7); }
+            70% { box-shadow: 0 0 0 18px rgba(40, 167, 69, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(40, 167, 69, 0); }
+        }
+
+        .ringing-active {
+            animation: ringPulse 1.2s infinite;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body class="text-slate-800 min-h-screen flex flex-col">
+
+    <!-- Screen Flash Banner for Ring Alert -->
+    <div id="ringBanner" class="fixed top-0 left-0 right-0 z-50 bg-emerald-600 text-white py-3 px-4 shadow-xl transform -translate-y-full transition-transform duration-300 flex items-center justify-between">
+        <div class="container mx-auto flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <i class="fa-solid fa-bell text-2xl animate-bounce"></i>
+                <div>
+                    <span id="ringBannerTitle" class="font-bold text-lg block leading-tight">BELL RINGING!</span>
+                    <span id="ringBannerSub" class="text-sm opacity-90">Scheduled event triggered</span>
+                </div>
+            </div>
+            <button onclick="dismissBanner()" class="bg-white/20 hover:bg-white/30 text-white px-3 py-1 rounded text-sm font-semibold transition">
+                Dismiss
+            </button>
+        </div>
+    </div>
+
+    <!-- Header Navigation -->
+    <header class="bg-wec-navy text-white shadow-lg border-b-4 border-wec-gold sticky top-0 z-30">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-wrap items-center justify-between gap-4">
+            
+            <!-- School Brand -->
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-lg bg-white/10 flex items-center justify-center text-wec-gold text-xl font-black border border-white/20">
+                    <i class="fa-solid fa-school"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg sm:text-xl font-bold tracking-tight leading-tight">Warrick Education Center</h1>
+                    <p class="text-xs text-blue-200 font-medium">Automated Multi-Schedule Bell System</p>
+                </div>
+            </div>
+
+            <!-- Audio & System Status Indicators -->
+            <div class="flex items-center space-x-3">
+                <div id="audioStatusBadge" class="flex items-center space-x-2 bg-red-950/60 border border-red-500/40 text-red-200 text-xs px-3 py-1.5 rounded-full font-medium">
+                    <span class="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse"></span>
+                    <span id="audioStatusText">Audio Locked</span>
+                </div>
+
+                <div id="activeDayBadge" class="bg-white/10 border border-white/20 text-xs px-3 py-1.5 rounded-full font-medium flex items-center space-x-1.5">
+                    <i class="fa-regular fa-calendar-check text-wec-gold"></i>
+                    <span id="currentDayText">Loading day...</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-grow w-full space-y-6">
+
+        <!-- Banner Prompt if Audio Engine Needs Initialization -->
+        <div id="audioInitCard" class="bg-amber-50 border-l-4 border-amber-500 p-4 rounded-xl shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div class="flex items-start space-x-3">
+                <div class="text-amber-600 text-xl mt-0.5">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                </div>
+                <div>
+                    <h3 class="font-bold text-amber-900 text-sm sm:text-base">Web Audio Authorization Required</h3>
+                    <p class="text-xs sm:text-sm text-amber-700">Browsers require user activation before playing scheduled bells. Click start to activate auto-ringing.</p>
+                </div>
+            </div>
+            <button id="startAudioBtn" onclick="enableAudioEngine()" class="w-full sm:w-auto px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm rounded-lg shadow transition duration-200 flex items-center justify-center space-x-2">
+                <i class="fa-solid fa-power-off"></i>
+                <span>Start Audio Engine</span>
+            </button>
+        </div>
+
+        <!-- Navigation Tabs & Mode Bar -->
+        <div class="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 bg-white p-2 sm:p-3 rounded-2xl shadow-sm border border-slate-200">
+            <!-- Navigation Tabs -->
+            <div class="flex items-center space-x-1 sm:space-x-2 overflow-x-auto pb-1 md:pb-0">
+                <button id="tabNavDashboard" onclick="switchTab('dashboard')" class="px-4 py-2 rounded-xl font-semibold text-sm transition-colors flex items-center space-x-2 bg-wec-primary text-white shadow-sm">
+                    <i class="fa-solid fa-gauge-high"></i>
+                    <span>Dashboard</span>
+                </button>
+                <button id="tabNavEditor" onclick="switchTab('editor')" class="px-4 py-2 rounded-xl font-semibold text-sm transition-colors text-slate-600 hover:bg-slate-100 flex items-center space-x-2">
+                    <i class="fa-solid fa-pen-to-square"></i>
+                    <span>Schedule Manager</span>
+                </button>
+                <button id="tabNavSettings" onclick="switchTab('settings')" class="px-4 py-2 rounded-xl font-semibold text-sm transition-colors text-slate-600 hover:bg-slate-100 flex items-center space-x-2">
+                    <i class="fa-solid fa-sliders"></i>
+                    <span>Audio & Settings</span>
+                </button>
+            </div>
+
+            <!-- Schedule Mode Quick Selector -->
+            <div class="flex items-center space-x-2 bg-slate-100 p-1.5 rounded-xl border border-slate-200">
+                <span class="text-xs font-bold text-slate-500 uppercase tracking-wider px-2 hidden sm:inline">Schedule Mode:</span>
+                <select id="scheduleModeSelect" onchange="handleModeChange(this.value)" class="bg-white border border-slate-300 font-semibold text-xs sm:text-sm text-slate-800 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-wec-primary">
+                    <option value="auto">⚡ Auto (Detect Day)</option>
+                    <option value="regular">📅 Regular Schedule (MWTh)</option>
+                    <option value="homeroom">📅 Homeroom Schedule (TF)</option>
+                    <option value="off">🚫 Off (Silent Mode)</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- TAB 1: MAIN DASHBOARD -->
+        <div id="tabContentDashboard" class="space-y-6">
+            
+            <!-- Top Dashboard Grid -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+                <!-- Clock & Status Card -->
+                <div class="lg:col-span-2 bg-gradient-to-br from-wec-navy via-wec-primary to-blue-900 rounded-2xl p-6 text-white shadow-md relative overflow-hidden flex flex-col justify-between">
+                    <div class="absolute -right-10 -bottom-10 opacity-10 text-white text-9xl pointer-events-none">
+                        <i class="fa-solid fa-bell"></i>
+                    </div>
+
+                    <div class="flex items-center justify-between mb-4">
+                        <span id="activeScheduleLabel" class="inline-flex items-center space-x-2 bg-white/15 backdrop-blur-md px-3.5 py-1.5 rounded-full text-xs font-semibold tracking-wide border border-white/20">
+                            <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                            <span id="activeScheduleText">Schedule Loading...</span>
+                        </span>
+
+                        <button onclick="toggleClockFormat()" title="Toggle 12h/24h Format" class="bg-white/10 hover:bg-white/20 text-xs text-white px-3 py-1 rounded-lg border border-white/20 transition">
+                            <i class="fa-solid fa-clock-rotate-left mr-1"></i>
+                            <span id="clockFormatText">12-Hour</span>
+                        </button>
+                    </div>
+
+                    <!-- Digital Clock Display -->
+                    <div class="my-4 text-center sm:text-left">
+                        <div id="liveClock" class="font-mono-clock text-4xl sm:text-6xl font-extrabold tracking-tight drop-shadow-sm">
+                            00:00:00 AM
+                        </div>
+                        <div id="liveDateText" class="text-blue-200 text-sm sm:text-base font-medium mt-1">
+                            Loading date...
+                        </div>
+                    </div>
+
+                    <!-- Current Activity Bar -->
+                    <div class="mt-4 pt-4 border-t border-white/15 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                        <div>
+                            <span class="text-xs uppercase font-bold text-blue-200 tracking-wider">Current Period / Status</span>
+                            <div id="currentPeriodDisplay" class="text-lg sm:text-xl font-bold text-white mt-0.5">
+                                Initializing...
+                            </div>
+                        </div>
+
+                        <button onclick="ringManualBell()" class="w-full sm:w-auto px-4 py-2.5 bg-wec-gold hover:bg-yellow-400 text-slate-900 font-extrabold text-xs sm:text-sm rounded-xl shadow-md transition transform active:scale-95 flex items-center justify-center space-x-2">
+                            <i class="fa-solid fa-bell"></i>
+                            <span>Ring Bell Now</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Next Bell & Countdown Card -->
+                <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Up Next</span>
+                            <span class="w-2.5 h-2.5 rounded-full bg-blue-600 animate-ping"></span>
+                        </div>
+
+                        <div id="nextBellName" class="text-xl font-bold text-slate-900 leading-tight">
+                            --
+                        </div>
+
+                        <div id="nextBellTime" class="text-sm font-semibold text-wec-primary mt-1">
+                            Scheduled at --:--
+                        </div>
+
+                        <!-- Live Countdown Timer -->
+                        <div class="mt-6 bg-slate-50 border border-slate-200 rounded-xl p-4 text-center">
+                            <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1">Time Remaining</span>
+                            <div id="countdownDisplay" class="font-mono-clock text-3xl sm:text-4xl font-extrabold text-slate-800 tracking-tight">
+                                00:00:00
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Progress Bar to Next Bell -->
+                    <div class="mt-4">
+                        <div class="flex justify-between text-xs font-medium text-slate-500 mb-1">
+                            <span>Block Progress</span>
+                            <span id="progressPercentage">0%</span>
+                        </div>
+                        <div class="w-full bg-slate-200 h-2.5 rounded-full overflow-hidden">
+                            <div id="progressBar" class="bg-wec-primary h-full transition-all duration-500 rounded-full" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Today's Schedule Timeline & Ring Log Grid -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                
+                <!-- Today's Schedule List (2 Cols) -->
+                <div class="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div class="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-8 h-8 rounded-lg bg-wec-primary/10 text-wec-primary flex items-center justify-center font-bold">
+                                <i class="fa-solid fa-list-check"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-bold text-slate-800">Today's Schedule Events</h3>
+                                <p id="scheduleSubtitle" class="text-xs text-slate-500">Active timetable based on schedule selection</p>
+                            </div>
+                        </div>
+                        <span id="eventCountBadge" class="text-xs bg-slate-200 text-slate-700 font-semibold px-2.5 py-1 rounded-full">
+                            0 Events
+                        </span>
+                    </div>
+
+                    <div class="p-4 overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="text-xs font-bold text-slate-400 uppercase border-b border-slate-200">
+                                    <th class="pb-3 px-3">Status</th>
+                                    <th class="pb-3 px-3">Time</th>
+                                    <th class="pb-3 px-3">Event Description</th>
+                                    <th class="pb-3 px-3 text-right">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="timelineTableBody" class="divide-y divide-slate-100 text-sm font-medium">
+                                <!-- Dynamic schedule rows injected here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Today's Trigger Log (1 Col) -->
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
+                            <div class="flex items-center space-x-2">
+                                <i class="fa-solid fa-clock-rotate-left text-slate-400"></i>
+                                <h3 class="font-bold text-slate-800">Trigger Log</h3>
+                            </div>
+                            <button onclick="clearRingLog()" class="text-xs text-slate-400 hover:text-red-600 transition">Clear</button>
+                        </div>
+
+                        <div id="ringLogContainer" class="space-y-2.5 max-h-[380px] overflow-y-auto pr-1">
+                            <div class="text-center py-8 text-slate-400 text-xs">
+                                <i class="fa-regular fa-bell-slash text-2xl mb-2 block"></i>
+                                No bells triggered yet today
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-4 pt-3 border-t border-slate-100 text-xs text-slate-400 flex items-center justify-between">
+                        <span>Auto-clears at midnight</span>
+                        <i class="fa-solid fa-shield-halved text-slate-300"></i>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- TAB 2: SCHEDULE MANAGER & EDITOR -->
+        <div id="tabContentEditor" class="hidden space-y-6">
+            
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+                <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-6 border-b border-slate-200">
+                    <div>
+                        <h2 class="text-xl font-bold text-slate-900">Schedule Management & Customization</h2>
+                        <p class="text-sm text-slate-500">Edit times and period labels for Regular and Homeroom schedules.</p>
+                    </div>
+
+                    <div class="flex items-center space-x-2">
+                        <button onclick="resetSchedulesToDefault()" class="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition flex items-center space-x-1.5">
+                            <i class="fa-solid fa-rotate-left"></i>
+                            <span>Reset Defaults</span>
+                        </button>
+                        <button onclick="exportSchedulesJSON()" class="px-3.5 py-2 bg-wec-primary hover:bg-wec-light text-white text-xs font-bold rounded-xl transition flex items-center space-x-1.5">
+                            <i class="fa-solid fa-download"></i>
+                            <span>Export</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Schedule Selection Tabs in Editor -->
+                <div class="mt-6 flex items-center space-x-3 border-b border-slate-200">
+                    <button id="editorTabBtnRegular" onclick="switchEditorSchedule('regular')" class="pb-3 px-4 text-sm font-bold border-b-2 border-wec-primary text-wec-primary flex items-center space-x-2">
+                        <span>Regular Schedule (MWTh)</span>
+                        <span id="editorBadgeRegular" class="bg-slate-100 text-slate-600 text-xs px-2 py-0.5 rounded-full">0</span>
+                    </button>
+                    <button id="editorTabBtnHomeroom" onclick="switchEditorSchedule('homeroom')" class="pb-3 px-4 text-sm font-bold border-b-2 border-transparent text-slate-500 hover:text-slate-800 flex items-center space-x-2">
+                        <span>Homeroom Schedule (TF)</span>
+                        <span id="editorBadgeHomeroom" class="bg-slate-100 text-slate-600 text-xs px-2 py-0.5 rounded-full">0</span>
+                    </button>
+                </div>
+
+                <!-- Add New Slot Form -->
+                <form id="addSlotForm" onsubmit="handleAddNewSlot(event)" class="mt-6 bg-slate-50 p-4 rounded-xl border border-slate-200 flex flex-col sm:flex-row items-end gap-3">
+                    <div class="w-full sm:w-1/4">
+                        <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Time (24h)</label>
+                        <input type="time" id="newSlotTime" required class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-wec-primary">
+                    </div>
+                    <div class="w-full sm:w-2/4">
+                        <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Event Name / Description</label>
+                        <input type="text" id="newSlotName" placeholder="e.g. Period 1 Starts" required class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-wec-primary">
+                    </div>
+                    <div class="w-full sm:w-1/4">
+                        <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded-lg text-sm transition flex items-center justify-center space-x-1.5">
+                            <i class="fa-solid fa-plus"></i>
+                            <span>Add Bell Event</span>
+                        </button>
+                    </div>
+                </form>
+
+                <!-- Editable Schedule List Table -->
+                <div class="mt-6 overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="text-xs font-bold text-slate-400 uppercase border-b border-slate-200">
+                                <th class="pb-3 px-3 w-12">#</th>
+                                <th class="pb-3 px-3 w-36">Time (HH:MM)</th>
+                                <th class="pb-3 px-3">Event Label</th>
+                                <th class="pb-3 px-3 text-right w-28">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="editorTableBody" class="divide-y divide-slate-100 text-sm">
+                            <!-- Injected dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- TAB 3: AUDIO & SYSTEM SETTINGS -->
+        <div id="tabContentSettings" class="hidden space-y-6">
+            
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 space-y-6">
+                <div>
+                    <h2 class="text-xl font-bold text-slate-900">Audio System & Sound Settings</h2>
+                    <p class="text-sm text-slate-500">Configure sound engines, testing bells, and audio preferences.</p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    
+                    <!-- Sound Type Selector -->
+                    <div class="bg-slate-50 p-5 rounded-xl border border-slate-200 space-y-4">
+                        <h3 class="font-bold text-slate-800 text-sm uppercase tracking-wider flex items-center space-x-2">
+                            <i class="fa-solid fa-music text-wec-primary"></i>
+                            <span>Bell Sound Engine</span>
+                        </h3>
+
+                        <div class="space-y-3">
+                            <label class="flex items-center space-x-3 p-3 bg-white rounded-lg border border-slate-200 cursor-pointer hover:border-wec-primary transition">
+                                <input type="radio" name="soundEngine" value="synth_chime" checked onchange="handleSoundTypeChange(this.value)" class="text-wec-primary focus:ring-wec-primary">
+                                <div>
+                                    <span class="font-semibold text-sm text-slate-800 block">Harmonic School Chime (Web Audio API)</span>
+                                    <span class="text-xs text-slate-500">Synthesized 4-tone pleasant school chime. No audio files needed.</span>
+                                </div>
+                            </label>
+
+                            <label class="flex items-center space-x-3 p-3 bg-white rounded-lg border border-slate-200 cursor-pointer hover:border-wec-primary transition">
+                                <input type="radio" name="soundEngine" value="synth_electric" onchange="handleSoundTypeChange(this.value)" class="text-wec-primary focus:ring-wec-primary">
+                                <div>
+                                    <span class="font-semibold text-sm text-slate-800 block">Electric Mechanical Bell (Web Audio API)</span>
+                                    <span class="text-xs text-slate-500">Traditional loud striking hammer school bell synth.</span>
+                                </div>
+                            </label>
+
+                            <label class="flex items-center space-x-3 p-3 bg-white rounded-lg border border-slate-200 cursor-pointer hover:border-wec-primary transition">
+                                <input type="radio" name="soundEngine" value="mp3" onchange="handleSoundTypeChange(this.value)" class="text-wec-primary focus:ring-wec-primary">
+                                <div>
+                                    <span class="font-semibold text-sm text-slate-800 block">schoolBell.mp3 File</span>
+                                    <span class="text-xs text-slate-500">Loads local `schoolBell.mp3` file from server directory.</span>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Volume & Audio Testing -->
+                    <div class="bg-slate-50 p-5 rounded-xl border border-slate-200 space-y-4 flex flex-col justify-between">
+                        <div>
+                            <h3 class="font-bold text-slate-800 text-sm uppercase tracking-wider flex items-center space-x-2 mb-3">
+                                <i class="fa-solid fa-volume-high text-wec-primary"></i>
+                                <span>Volume & Output Test</span>
+                            </h3>
+
+                            <div class="space-y-4">
+                                <div>
+                                    <div class="flex justify-between text-sm font-semibold text-slate-700 mb-1">
+                                        <span>Master Volume</span>
+                                        <span id="volumeValText">80%</span>
+                                    </div>
+                                    <input type="range" id="volumeRange" min="0" max="1" step="0.05" value="0.8" oninput="handleVolumeChange(this.value)" class="w-full accent-wec-primary cursor-pointer">
+                                </div>
+
+                                <div class="p-3 bg-white rounded-lg border border-slate-200 flex items-center justify-between">
+                                    <span class="text-xs font-semibold text-slate-600">Manual Audio Test:</span>
+                                    <button onclick="ringManualBell()" class="px-4 py-2 bg-wec-primary hover:bg-wec-light text-white text-xs font-bold rounded-lg shadow transition flex items-center space-x-2">
+                                        <i class="fa-solid fa-play"></i>
+                                        <span>Test Sound</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="pt-3 border-t border-slate-200 text-xs text-slate-500">
+                            <strong>Tip:</strong> If using on an automated hallway/office display PC, set computer sleep mode to "Never".
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-slate-200 py-4 mt-8">
+        <div class="max-w-7xl mx-auto px-4 text-center text-xs text-slate-500 flex flex-col sm:flex-row items-center justify-between gap-2">
+            <span>&copy; Warrick Education Center - Official Bell System</span>
+            <span class="flex items-center space-x-2">
+                <span class="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span>
+                <span>System Operational</span>
+            </span>
+        </div>
+    </footer>
+
+    <!-- Audio Player Fallback for MP3 -->
+    <audio id="bellSound" src="schoolBell.mp3" preload="auto"></audio>
+
+    <!-- MAIN SCRIPT LOGIC -->
+    <script>
+        // ==========================================
+        // 1. DEFAULT SCHEDULES & CONFIG (WEC OFFICIAL)
+        // ==========================================
+
+        // Default Regular Schedule (Mondays, Wednesdays, Thursdays)
+        const DEFAULT_REGULAR_SCHEDULE = [
+            { time: "07:20", name: "AM Prep Starts" },
+            { time: "08:00", name: "Period 1 Starts" },
+            { time: "08:45", name: "Period 1 Ends" },
+            { time: "08:50", name: "Period 2 Starts" },
+            { time: "09:35", name: "Period 2 Ends" },
+            { time: "09:40", name: "Period 3 Starts" },
+            { time: "10:20", name: "Period 3 Ends" },
+            { time: "10:25", name: "Period 4 Starts" },
+            { time: "10:40", name: "Period 4 Ends" },
+            { time: "10:45", name: "Lunch Starts" },
+            { time: "11:15", name: "Lunch Ends" },
+            { time: "11:20", name: "Period 5 Starts" },
+            { time: "12:05", name: "Period 5 Ends" },
+            { time: "12:10", name: "Period 6 Starts" },
+            { time: "13:05", name: "Period 6 Ends" },
+            { time: "13:10", name: "Period 7 Starts" },
+            { time: "13:55", name: "Period 7 Ends / Student Break Starts" },
+            { time: "14:10", name: "Student Break Ends / Dismissal" },
+            { time: "14:15", name: "Period 7 (PM) Starts" },
+            { time: "15:05", name: "End of Day" }
+        ];
+
+        // Default Homeroom Schedule (Tuesdays, Fridays)
+        const DEFAULT_HOMEROOM_SCHEDULE = [
+            { time: "07:20", name: "AM Prep Starts" },
+            { time: "08:00", name: "Period 1 Starts" },
+            { time: "08:40", name: "Period 1 Ends" },
+            { time: "08:45", name: "Period 2 Starts" },
+            { time: "09:35", name: "Period 2 Ends" },
+            { time: "09:40", name: "Period 3 Starts" },
+            { time: "10:20", name: "Period 3 Ends" },
+            { time: "10:25", name: "Period 4 / Homeroom Starts" },
+            { time: "10:45", name: "Period 4 / Homeroom Ends" },
+            { time: "10:50", name: "Lunch Starts" },
+            { time: "11:20", name: "Lunch Ends" },
+            { time: "11:25", name: "Period 5 Starts" },
+            { time: "12:10", name: "Period 5 Ends" },
+            { time: "12:15", name: "Period 6 Starts" },
+            { time: "13:10", name: "Period 6 Ends" },
+            { time: "13:15", name: "Period 7 Starts" },
+            { time: "14:00", name: "Period 7 Ends / Student Break Starts" },
+            { time: "14:10", name: "Student Break Ends / Dismissal" },
+            { time: "14:15", name: "Period 7 (PM) Starts" },
+            { time: "15:05", name: "End of Day" }
+        ];
+
+        // System State Variables
+        let regularSchedule = JSON.parse(localStorage.getItem('wec_schedule_regular')) || DEFAULT_REGULAR_SCHEDULE;
+        let homeroomSchedule = JSON.parse(localStorage.getItem('wec_schedule_homeroom')) || DEFAULT_HOMEROOM_SCHEDULE;
+        let currentMode = localStorage.getItem('wec_mode') || 'auto'; // 'auto', 'regular', 'homeroom', 'off'
+        let soundEngine = localStorage.getItem('wec_sound') || 'synth_chime'; // 'synth_chime', 'synth_electric', 'mp3'
+        let clock24h = localStorage.getItem('wec_clock24') === 'true';
+        let volume = parseFloat(localStorage.getItem('wec_volume') || '0.8');
+
+        let audioUnlocked = false;
+        let audioCtx = null;
+        let playedBellsSet = new Set();
+        let triggerLog = [];
+        let activeEditorSchedule = 'regular'; // 'regular' or 'homeroom'
+
+        // ==========================================
+        // 2. AUDIO ENGINE & SYNTHESIZER
+        // ==========================================
+
+        function enableAudioEngine() {
+            try {
+                if (!audioCtx) {
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                    audioCtx = new AudioContext();
+                }
+                if (audioCtx.state === 'suspended') {
+                    audioCtx.resume();
+                }
+
+                // Unlock MP3 element
+                const bellMp3 = document.getElementById('bellSound');
+                if (bellMp3) {
+                    bellMp3.play().then(() => {
+                        bellMp3.pause();
+                        bellMp3.currentTime = 0;
+                    }).catch(err => console.log("MP3 autoplay unlock catch:", err));
+                }
+
+                audioUnlocked = true;
+                updateAudioBadge(true);
+                document.getElementById('audioInitCard').style.display = 'none';
+                
+                // Play short soft chime confirmation
+                playSynthesizedChime(0.2);
+            } catch (e) {
+                console.error("Audio init error:", e);
+            }
+        }
+
+        function updateAudioBadge(unlocked) {
+            const badge = document.getElementById('audioStatusBadge');
+            if (unlocked) {
+                badge.className = "flex items-center space-x-2 bg-emerald-950/60 border border-emerald-500/40 text-emerald-200 text-xs px-3 py-1.5 rounded-full font-medium";
+                badge.innerHTML = `<span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span><span>Audio Engine Ready</span>`;
+            } else {
+                badge.className = "flex items-center space-x-2 bg-red-950/60 border border-red-500/40 text-red-200 text-xs px-3 py-1.5 rounded-full font-medium";
+                badge.innerHTML = `<span class="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse"></span><span>Audio Locked</span>`;
+            }
+        }
+
+        function ringSound() {
+            if (!audioUnlocked) {
+                enableAudioEngine();
+            }
+
+            if (soundEngine === 'mp3') {
+                const mp3 = document.getElementById('bellSound');
+                if (mp3) {
+                    mp3.volume = volume;
+                    mp3.currentTime = 0;
+                    mp3.play().catch(() => {
+                        // Fallback to synth if mp3 file missing
+                        playSynthesizedChime(volume);
+                    });
+                }
+            } else if (soundEngine === 'synth_electric') {
+                playSynthesizedElectricBell(volume);
+            } else {
+                // Default synth_chime
+                playSynthesizedChime(volume);
+            }
+
+            // Screen Banner Visual Ring Notification
+            triggerRingBanner();
+        }
+
+        function playSynthesizedChime(vol = 0.8) {
+            if (!audioCtx) {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                audioCtx = new AudioContext();
+            }
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+
+            const now = audioCtx.currentTime;
+            const freqs = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6 (Harmonic Westminster chime)
+
+            freqs.forEach((freq, idx) => {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(freq, now + idx * 0.35);
+
+                gain.gain.setValueAtTime(0, now + idx * 0.35);
+                gain.gain.linearRampToValueAtTime(0.3 * vol, now + idx * 0.35 + 0.04);
+                gain.gain.exponentialRampToValueAtTime(0.0001, now + idx * 0.35 + 2.2);
+
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                osc.start(now + idx * 0.35);
+                osc.stop(now + idx * 0.35 + 2.3);
+            });
+        }
+
+        function playSynthesizedElectricBell(vol = 0.8) {
+            if (!audioCtx) {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                audioCtx = new AudioContext();
+            }
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+
+            const now = audioCtx.currentTime;
+            
+            const osc = audioCtx.createOscillator();
+            const mod = audioCtx.createOscillator();
+            const modGain = audioCtx.createGain();
+            const mainGain = audioCtx.createGain();
+
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(820, now);
+
+            // Striker vibration frequency
+            mod.type = 'sawtooth';
+            mod.frequency.setValueAtTime(22, now);
+            modGain.gain.setValueAtTime(350, now);
+
+            mod.connect(osc.frequency);
+
+            mainGain.gain.setValueAtTime(0, now);
+            mainGain.gain.linearRampToValueAtTime(0.35 * vol, now + 0.03);
+            mainGain.gain.setValueAtTime(0.35 * vol, now + 3.0);
+            mainGain.gain.exponentialRampToValueAtTime(0.0001, now + 3.6);
+
+            osc.connect(mainGain);
+            mainGain.connect(audioCtx.destination);
+
+            mod.start(now);
+            osc.start(now);
+            mod.stop(now + 3.65);
+            osc.stop(now + 3.65);
+        }
+
+        function triggerRingBanner() {
+            const banner = document.getElementById('ringBanner');
+            banner.classList.remove('-translate-y-full');
+            
+            setTimeout(() => {
+                banner.classList.add('-translate-y-full');
+            }, 5000);
+        }
+
+        function dismissBanner() {
+            document.getElementById('ringBanner').classList.add('-translate-y-full');
+        }
+
+        function ringManualBell() {
+            ringSound();
+            logTrigger("Manual Test Ring", "User Triggered");
+        }
+
+        function logTrigger(eventName, timeStr) {
+            const now = new Date();
+            const timestamp = now.toLocaleTimeString();
+            triggerLog.unshift({ eventName, timeStr, timestamp });
+            if (triggerLog.length > 20) triggerLog.pop();
+            renderTriggerLog();
+        }
+
+        function renderTriggerLog() {
+            const container = document.getElementById('ringLogContainer');
+            if (triggerLog.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-8 text-slate-400 text-xs">
+                        <i class="fa-regular fa-bell-slash text-2xl mb-2 block"></i>
+                        No bells triggered yet today
+                    </div>`;
+                return;
+            }
+
+            container.innerHTML = triggerLog.map(item => `
+                <div class="bg-slate-50 border border-slate-200 p-2.5 rounded-xl flex items-center justify-between text-xs">
+                    <div>
+                        <span class="font-bold text-slate-800 block">${escapeHtml(item.eventName)}</span>
+                        <span class="text-slate-500">${item.timeStr}</span>
+                    </div>
+                    <span class="bg-emerald-100 text-emerald-800 font-semibold px-2 py-0.5 rounded text-[10px]">
+                        ${item.timestamp}
+                    </span>
+                </div>
+            `).join('');
+        }
+
+        function clearRingLog() {
+            triggerLog = [];
+            renderTriggerLog();
+        }
+
+        // ==========================================
+        // 3. DAY DETECTION & SCHEDULE RESOLUTION
+        // ==========================================
+
+        function getActiveScheduleInfo() {
+            const now = new Date();
+            const dayNum = now.getDay(); // 0: Sun, 1: Mon, 2: Tue, 3: Wed, 4: Thu, 5: Fri, 6: Sat
+            const daysMap = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+            const currentDayName = daysMap[dayNum];
+
+            let activeScheduleKey = 'off'; // 'regular', 'homeroom', 'off'
+            let isAuto = (currentMode === 'auto');
+            let label = "";
+
+            if (currentMode === 'regular') {
+                activeScheduleKey = 'regular';
+                label = "Regular Schedule (Manual Override)";
+            } else if (currentMode === 'homeroom') {
+                activeScheduleKey = 'homeroom';
+                label = "Homeroom Schedule (Manual Override)";
+            } else if (currentMode === 'off') {
+                activeScheduleKey = 'off';
+                label = "Bells Disabled (Off)";
+            } else {
+                // Auto Mode logic:
+                // Mon(1), Wed(3), Thu(4) -> Regular Schedule
+                // Tue(2), Fri(5) -> Homeroom Schedule
+                // Sat(0), Sun(6) -> Weekend Mode
+                if (dayNum === 1 || dayNum === 3 || dayNum === 4) {
+                    activeScheduleKey = 'regular';
+                    label = `Regular Schedule (Auto - ${currentDayName})`;
+                } else if (dayNum === 2 || dayNum === 5) {
+                    activeScheduleKey = 'homeroom';
+                    label = `Homeroom Schedule (Auto - ${currentDayName})`;
+                } else {
+                    activeScheduleKey = 'off';
+                    label = `Weekend Mode (${currentDayName})`;
+                }
+            }
+
+            let eventsList = [];
+            if (activeScheduleKey === 'regular') eventsList = regularSchedule;
+            else if (activeScheduleKey === 'homeroom') eventsList = homeroomSchedule;
+
+            // Sort schedule chronologically
+            eventsList = [...eventsList].sort((a, b) => a.time.localeCompare(b.time));
+
+            return {
+                dayName: currentDayName,
+                modeKey: activeScheduleKey,
+                label: label,
+                events: eventsList,
+                isAuto: isAuto
+            };
+        }
+
+        // ==========================================
+        // 4. MAIN TICK & COUNTDOWN LOOP
+        // ==========================================
+
+        function mainTick() {
+            const now = new Date();
+            const timeStr24 = now.toTimeString().substring(0, 8); // HH:MM:SS
+            const hhmm = timeStr24.substring(0, 5); // HH:MM
+
+            // Update Header & Clock Displays
+            document.getElementById('liveClock').innerText = formatClockString(now, clock24h);
+            document.getElementById('liveDateText').innerText = now.toLocaleDateString(undefined, {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+
+            // Reset played bells set at midnight
+            if (hhmm === "00:00" && now.getSeconds() === 0) {
+                playedBellsSet.clear();
+            }
+
+            const scheduleInfo = getActiveScheduleInfo();
+            document.getElementById('currentDayText').innerText = scheduleInfo.dayName;
+            document.getElementById('activeScheduleText').innerText = scheduleInfo.label;
+
+            const events = scheduleInfo.events;
+
+            if (events.length === 0 || scheduleInfo.modeKey === 'off') {
+                document.getElementById('currentPeriodDisplay').innerText = scheduleInfo.modeKey === 'off' ? "System Off" : "No Bells Scheduled";
+                document.getElementById('nextBellName').innerText = "None Remaining";
+                document.getElementById('nextBellTime').innerText = "No upcoming bells today";
+                document.getElementById('countdownDisplay').innerText = "00:00:00";
+                document.getElementById('progressBar').style.width = "0%";
+                document.getElementById('progressPercentage').innerText = "0%";
+                renderTimeline([], null, null, hhmm);
+                return;
+            }
+
+            // Find current and next event
+            let currentEvent = null;
+            let nextEvent = null;
+
+            for (let i = 0; i < events.length; i++) {
+                const event = events[i];
+
+                // Auto Trigger Bell
+                if (event.time === hhmm && !playedBellsSet.has(event.time) && now.getSeconds() === 0) {
+                    playedBellsSet.add(event.time);
+                    ringSound();
+                    logTrigger(event.name, format12hTime(event.time));
+                }
+
+                if (event.time <= hhmm) {
+                    currentEvent = event;
+                } else if (!nextEvent) {
+                    nextEvent = event;
+                }
+            }
+
+            // Current Status Text
+            const currentStatusText = currentEvent ? currentEvent.name : "Before School Hours";
+            document.getElementById('currentPeriodDisplay').innerText = currentStatusText;
+
+            // Countdown Logic
+            if (nextEvent) {
+                document.getElementById('nextBellName').innerText = nextEvent.name;
+                document.getElementById('nextBellTime').innerText = `Scheduled at ${format12hTime(nextEvent.time)}`;
+
+                // Calculate seconds until next bell
+                const [nHours, nMins] = nextEvent.time.split(':').map(Number);
+                const targetTime = new Date(now);
+                targetTime.setHours(nHours, nMins, 0, 0);
+
+                const diffMs = targetTime - now;
+                if (diffMs > 0) {
+                    const diffSecs = Math.floor(diffMs / 1000);
+                    const hrs = Math.floor(diffSecs / 3600);
+                    const mins = Math.floor((diffSecs % 3600) / 60);
+                    const secs = diffSecs % 60;
+
+                    document.getElementById('countdownDisplay').innerText = 
+                        `${padZero(hrs)}:${padZero(mins)}:${padZero(secs)}`;
+
+                    // Progress percentage calculation
+                    let prevTarget = new Date(now);
+                    if (currentEvent) {
+                        const [cHours, cMins] = currentEvent.time.split(':').map(Number);
+                        prevTarget.setHours(cHours, cMins, 0, 0);
+                    } else {
+                        // Start of day reference (7:00 AM)
+                        prevTarget.setHours(7, 0, 0, 0);
+                    }
+
+                    const totalDuration = targetTime - prevTarget;
+                    const elapsed = now - prevTarget;
+                    let pct = Math.min(100, Math.max(0, Math.floor((elapsed / totalDuration) * 100)));
+                    if (isNaN(pct)) pct = 0;
+
+                    document.getElementById('progressBar').style.width = `${pct}%`;
+                    document.getElementById('progressPercentage').innerText = `${pct}%`;
+                }
+            } else {
+                document.getElementById('nextBellName').innerText = "End of Scheduled Day";
+                document.getElementById('nextBellTime').innerText = "No further bells today";
+                document.getElementById('countdownDisplay').innerText = "00:00:00";
+                document.getElementById('progressBar').style.width = "100%";
+                document.getElementById('progressPercentage').innerText = "100%";
+            }
+
+            renderTimeline(events, currentEvent, nextEvent, hhmm);
+        }
+
+        // ==========================================
+        // 5. TIMELINE & DOM RENDERERS
+        // ==========================================
+
+        function renderTimeline(events, currentEvent, nextEvent, hhmm) {
+            const tbody = document.getElementById('timelineTableBody');
+            document.getElementById('eventCountBadge').innerText = `${events.length} Events`;
+
+            if (events.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="4" class="text-center py-8 text-slate-400 text-xs">
+                            No events scheduled for the current selection mode.
+                        </td>
+                    </tr>`;
+                return;
+            }
+
+            tbody.innerHTML = events.map((ev) => {
+                const isPast = ev.time < hhmm;
+                const isCurrent = currentEvent && ev.time === currentEvent.time;
+                const isNext = nextEvent && ev.time === nextEvent.time;
+
+                let rowClass = "hover:bg-slate-50 transition";
+                let statusBadge = `<span class="inline-flex items-center text-xs text-slate-400"><i class="fa-regular fa-clock mr-1"></i> Upcoming</span>`;
+
+                if (isCurrent) {
+                    rowClass = "bg-emerald-50/80 font-bold border-l-4 border-emerald-500 hover:bg-emerald-50";
+                    statusBadge = `<span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-bold bg-emerald-100 text-emerald-800"><span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse mr-1.5"></span> Active</span>`;
+                } else if (isNext) {
+                    rowClass = "bg-blue-50/50 font-semibold hover:bg-blue-50";
+                    statusBadge = `<span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-bold bg-blue-100 text-wec-primary"><i class="fa-solid fa-arrow-right mr-1"></i> Up Next</span>`;
+                } else if (isPast) {
+                    rowClass = "opacity-60 bg-slate-50/30";
+                    statusBadge = `<span class="inline-flex items-center text-xs text-slate-400"><i class="fa-solid fa-check text-emerald-600 mr-1"></i> Completed</span>`;
+                }
+
+                return `
+                    <tr class="${rowClass}">
+                        <td class="py-3 px-3">${statusBadge}</td>
+                        <td class="py-3 px-3 font-mono-clock font-bold text-slate-800">${format12hTime(ev.time)}</td>
+                        <td class="py-3 px-3 text-slate-800">${escapeHtml(ev.name)}</td>
+                        <td class="py-3 px-3 text-right">
+                            <button onclick="triggerSpecificBell('${ev.time}', '${escapeHtml(ev.name)}')" title="Test trigger this bell" class="text-xs text-slate-400 hover:text-wec-primary p-1.5 rounded hover:bg-slate-200/60 transition">
+                                <i class="fa-solid fa-bell"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function triggerSpecificBell(timeStr, eventName) {
+            ringSound();
+            logTrigger(`${eventName} (Test)`, format12hTime(timeStr));
+        }
+
+        // ==========================================
+        // 6. SCHEDULE EDITOR ACTIONS
+        // ==========================================
+
+        function renderEditorTable() {
+            const events = activeEditorSchedule === 'regular' ? regularSchedule : homeroomSchedule;
+            // Sort chronologically
+            events.sort((a, b) => a.time.localeCompare(b.time));
+
+            document.getElementById('editorBadgeRegular').innerText = regularSchedule.length;
+            document.getElementById('editorBadgeHomeroom').innerText = homeroomSchedule.length;
+
+            const tbody = document.getElementById('editorTableBody');
+
+            if (events.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="4" class="text-center py-8 text-slate-400 text-xs">
+                            No time slots defined for this schedule. Click "Add Bell Event" above.
+                        </td>
+                    </tr>`;
+                return;
+            }
+
+            tbody.innerHTML = events.map((slot, index) => `
+                <tr class="hover:bg-slate-50 transition">
+                    <td class="py-3 px-3 text-xs font-bold text-slate-400">${index + 1}</td>
+                    <td class="py-3 px-3">
+                        <input type="time" value="${slot.time}" onchange="updateSlotTime('${activeEditorSchedule}', ${index}, this.value)" class="bg-white border border-slate-300 text-xs font-bold rounded px-2 py-1 focus:ring-2 focus:ring-wec-primary">
+                    </td>
+                    <td class="py-3 px-3">
+                        <input type="text" value="${escapeHtml(slot.name)}" onchange="updateSlotName('${activeEditorSchedule}', ${index}, this.value)" class="w-full bg-white border border-slate-300 text-xs rounded px-2.5 py-1 focus:ring-2 focus:ring-wec-primary">
+                    </td>
+                    <td class="py-3 px-3 text-right">
+                        <button onclick="deleteSlot('${activeEditorSchedule}', ${index})" class="text-xs text-red-500 hover:text-red-700 p-1.5 rounded hover:bg-red-50 transition" title="Delete Slot">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function switchEditorSchedule(schedKey) {
+            activeEditorSchedule = schedKey;
+            const btnReg = document.getElementById('editorTabBtnRegular');
+            const btnHome = document.getElementById('editorTabBtnHomeroom');
+
+            if (schedKey === 'regular') {
+                btnReg.className = "pb-3 px-4 text-sm font-bold border-b-2 border-wec-primary text-wec-primary flex items-center space-x-2";
+                btnHome.className = "pb-3 px-4 text-sm font-bold border-b-2 border-transparent text-slate-500 hover:text-slate-800 flex items-center space-x-2";
+            } else {
+                btnHome.className = "pb-3 px-4 text-sm font-bold border-b-2 border-wec-primary text-wec-primary flex items-center space-x-2";
+                btnReg.className = "pb-3 px-4 text-sm font-bold border-b-2 border-transparent text-slate-500 hover:text-slate-800 flex items-center space-x-2";
+            }
+
+            renderEditorTable();
+        }
+
+        function handleAddNewSlot(e) {
+            e.preventDefault();
+            const timeVal = document.getElementById('newSlotTime').value;
+            const nameVal = document.getElementById('newSlotName').value.trim();
+
+            if (!timeVal || !nameVal) return;
+
+            const targetArray = activeEditorSchedule === 'regular' ? regularSchedule : homeroomSchedule;
+            targetArray.push({ time: timeVal, name: nameVal });
+
+            saveSchedulesToLocalStorage();
+            renderEditorTable();
+
+            document.getElementById('newSlotName').value = '';
+            document.getElementById('newSlotTime').value = '';
+        }
+
+        function updateSlotTime(schedKey, index, newTime) {
+            const targetArray = schedKey === 'regular' ? regularSchedule : homeroomSchedule;
+            if (targetArray[index]) {
+                targetArray[index].time = newTime;
+                saveSchedulesToLocalStorage();
+            }
+        }
+
+        function updateSlotName(schedKey, index, newName) {
+            const targetArray = schedKey === 'regular' ? regularSchedule : homeroomSchedule;
+            if (targetArray[index]) {
+                targetArray[index].name = newName;
+                saveSchedulesToLocalStorage();
+            }
+        }
+
+        function deleteSlot(schedKey, index) {
+            const targetArray = schedKey === 'regular' ? regularSchedule : homeroomSchedule;
+            targetArray.splice(index, 1);
+            saveSchedulesToLocalStorage();
+            renderEditorTable();
+        }
+
+        function saveSchedulesToLocalStorage() {
+            localStorage.setItem('wec_schedule_regular', JSON.stringify(regularSchedule));
+            localStorage.setItem('wec_schedule_homeroom', JSON.stringify(homeroomSchedule));
+        }
+
+        function resetSchedulesToDefault() {
+            if (confirm("Reset both Regular and Homeroom schedules to official Warrick Education Center default timetables?")) {
+                regularSchedule = JSON.parse(JSON.stringify(DEFAULT_REGULAR_SCHEDULE));
+                homeroomSchedule = JSON.parse(JSON.stringify(DEFAULT_HOMEROOM_SCHEDULE));
+                saveSchedulesToLocalStorage();
+                renderEditorTable();
+            }
+        }
+
+        function exportSchedulesJSON() {
+            const data = { regularSchedule, homeroomSchedule, exportedAt: new Date().toISOString() };
+            const jsonStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data, null, 2));
+            const dlAnchor = document.createElement('a');
+            dlAnchor.setAttribute("href", jsonStr);
+            dlAnchor.setAttribute("download", "WEC_Bell_Schedules.json");
+            document.body.appendChild(dlAnchor);
+            dlAnchor.click();
+            dlAnchor.remove();
+        }
+
+        // ==========================================
+        // 7. SETTINGS & TAB CONTROLS
+        // ==========================================
+
+        function switchTab(tabName) {
+            document.getElementById('tabContentDashboard').classList.add('hidden');
+            document.getElementById('tabContentEditor').classList.add('hidden');
+            document.getElementById('tabContentSettings').classList.add('hidden');
+
+            document.getElementById('tabNavDashboard').className = "px-4 py-2 rounded-xl font-semibold text-sm transition-colors text-slate-600 hover:bg-slate-100 flex items-center space-x-2";
+            document.getElementById('tabNavEditor').className = "px-4 py-2 rounded-xl font-semibold text-sm transition-colors text-slate-600 hover:bg-slate-100 flex items-center space-x-2";
+            document.getElementById('tabNavSettings').className = "px-4 py-2 rounded-xl font-semibold text-sm transition-colors text-slate-600 hover:bg-slate-100 flex items-center space-x-2";
+
+            if (tabName === 'dashboard') {
+                document.getElementById('tabContentDashboard').classList.remove('hidden');
+                document.getElementById('tabNavDashboard').className = "px-4 py-2 rounded-xl font-semibold text-sm transition-colors flex items-center space-x-2 bg-wec-primary text-white shadow-sm";
+            } else if (tabName === 'editor') {
+                document.getElementById('tabContentEditor').classList.remove('hidden');
+                document.getElementById('tabNavEditor').className = "px-4 py-2 rounded-xl font-semibold text-sm transition-colors flex items-center space-x-2 bg-wec-primary text-white shadow-sm";
+                renderEditorTable();
+            } else if (tabName === 'settings') {
+                document.getElementById('tabContentSettings').classList.remove('hidden');
+                document.getElementById('tabNavSettings').className = "px-4 py-2 rounded-xl font-semibold text-sm transition-colors flex items-center space-x-2 bg-wec-primary text-white shadow-sm";
+            }
+        }
+
+        function handleModeChange(newVal) {
+            currentMode = newVal;
+            localStorage.setItem('wec_mode', newVal);
+            mainTick();
+        }
+
+        function handleSoundTypeChange(newType) {
+            soundEngine = newType;
+            localStorage.setItem('wec_sound', newType);
+        }
+
+        function handleVolumeChange(newVal) {
+            volume = parseFloat(newVal);
+            localStorage.setItem('wec_volume', newVal);
+            document.getElementById('volumeValText').innerText = `${Math.round(volume * 100)}%`;
+        }
+
+        function toggleClockFormat() {
+            clock24h = !clock24h;
+            localStorage.setItem('wec_clock24', clock24h);
+            document.getElementById('clockFormatText').innerText = clock24h ? "24-Hour" : "12-Hour";
+            mainTick();
+        }
+
+        // ==========================================
+        // 8. HELPER UTILITIES
+        // ==========================================
+
+        function padZero(num) {
+            return num < 10 ? '0' + num : num;
+        }
+
+        function format12hTime(time24) {
+            if (!time24) return '--:--';
+            const [hStr, mStr] = time24.split(':');
+            let h = parseInt(hStr, 10);
+            const m = mStr;
+            const ampm = h >= 12 ? 'PM' : 'AM';
+            h = h % 12;
+            h = h ? h : 12;
+            return `${h}:${m} ${ampm}`;
+        }
+
+        function formatClockString(dateObj, is24h) {
+            if (is24h) {
+                return dateObj.toTimeString().substring(0, 8);
+            } else {
+                return dateObj.toLocaleTimeString();
+            }
+        }
+
+        function escapeHtml(str) {
+            return str.replace(/[&<>"']/g, function(m) {
+                return {
+                    '&': '&amp;',
+                    '<': '&lt;',
+                    '>': '&gt;',
+                    '"': '&quot;',
+                    "'": '&#039;'
+                }[m];
+            });
+        }
+
+        // ==========================================
+        // 9. INITIALIZATION ON LOAD
+        // ==========================================
+
+        window.onload = function() {
+            // Set initial state dropdowns & settings UI
+            document.getElementById('scheduleModeSelect').value = currentMode;
+            document.getElementById('volumeRange').value = volume;
+            document.getElementById('volumeValText').innerText = `${Math.round(volume * 100)}%`;
+            document.getElementById('clockFormatText').innerText = clock24h ? "24-Hour" : "12-Hour";
+
+            // Set sound engine radio button
+            const radios = document.getElementsByName('soundEngine');
+            radios.forEach(r => {
+                if (r.value === soundEngine) r.checked = true;
+            });
+
+            // Start main heartbeat interval
+            mainTick();
+            setInterval(mainTick, 1000);
+
+            // Global click listener to unlock audio seamlessly on first interaction
+            document.body.addEventListener('click', function unlockOnce() {
+                if (!audioUnlocked) {
+                    enableAudioEngine();
+                }
+                document.body.removeEventListener('click', unlockOnce);
+            }, { once: true });
+        };
+    </script>
+</body>
+</html>
